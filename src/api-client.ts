@@ -206,6 +206,52 @@ export class ZenzapApiClient {
     });
   }
 
+  async removeReaction(
+    messageId: string,
+    reaction: string,
+  ): Promise<void> {
+    return this.request("DELETE", `/v2/messages/${messageId}/reactions`, {
+      reaction,
+    });
+  }
+
+  async markDelivered(messageId: string): Promise<void> {
+    return this.request("POST", `/v2/messages/${messageId}/delivered`);
+  }
+
+  async markRead(messageId: string): Promise<void> {
+    return this.request("POST", `/v2/messages/${messageId}/read`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Topic members
+  // ---------------------------------------------------------------------------
+
+  async addMembers(
+    topicId: string,
+    memberIds: string[],
+  ): Promise<{ id: string; memberIds: string[]; updatedAt: number }> {
+    return this.request("POST", `/v2/topics/${topicId}/members`, {
+      memberIds,
+    });
+  }
+
+  async removeMembers(
+    topicId: string,
+    memberIds: string[],
+  ): Promise<{ id: string; memberIds: string[]; updatedAt: number }> {
+    return this.request("DELETE", `/v2/topics/${topicId}/members`, {
+      memberIds,
+    });
+  }
+
+  async updateTopic(
+    topicId: string,
+    data: { name?: string; description?: string },
+  ): Promise<void> {
+    return this.request("PATCH", `/v2/topics/${topicId}`, data);
+  }
+
   // ---------------------------------------------------------------------------
   // Long polling
   // ---------------------------------------------------------------------------

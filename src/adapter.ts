@@ -37,7 +37,7 @@ export class ZenzapAdapter
   private logger: Logger;
   private config: ZenzapAdapterConfig;
   private converter = new ZenzapFormatConverter();
-  private api: ZenzapApiClient;
+  readonly api: ZenzapApiClient;
 
   // Long-polling state
   private pollingOffset?: string;
@@ -149,11 +149,19 @@ export class ZenzapAdapter
   }
 
   private async pollLoop(): Promise<void> {
+    // Fetch initial offset without blocking (timeout=0, limit=1)
+    try {
+      const initial = await this.api.getUpdates(undefined, 1, 0);
+      this.pollingOffset = initial.nextOffset;
+    } catch (err) {
+      this.logger.error("Failed to get initial polling offset", err as Error);
+    }
+
     while (this.pollingActive) {
       try {
         const response = await this.api.getUpdates(
           this.pollingOffset,
-          50,
+          100,
           25,
         );
         this.pollingOffset = response.nextOffset;
@@ -186,8 +194,11 @@ export class ZenzapAdapter
         topicId: data.topicId,
       });
 
+      const mentions = data.mentions ?? [];
+      const mentionedProfiles = data.mentionedProfiles ?? [];
       const isMention =
-        data.mentions?.some((m) => m.id === this.botUserId) ?? false;
+        mentions.some((m) => m.id === this.botUserId) ||
+        mentionedProfiles.includes(this.botUserId ?? "");
 
       const factory = async (): Promise<Message<ZenzapMessage>> => {
         const msg = this.parseMessage(data);
@@ -206,28 +217,30 @@ export class ZenzapAdapter
   // ---------------------------------------------------------------------------
 
   parseMessage(raw: ZenzapMessage): Message<ZenzapMessage> {
-    const attachments: Attachment[] = raw.attachments.map((a) => ({
-      type: a.type,
+    const attachments: Attachment[] = (raw.attachments ?? []).map((a) => ({
+      type: (a.type as Attachment["type"]) ?? "file",
       name: a.name,
       url: a.url,
     }));
 
+    const text = raw.text ?? "";
+
     return new Message<ZenzapMessage>({
       id: raw.id,
       threadId: this.encodeThreadId({ topicId: raw.topicId }),
-      text: raw.text,
-      formatted: this.converter.toAst(raw.text),
+      text,
+      formatted: this.converter.toAst(text),
       raw,
       author: {
         userId: raw.senderId,
-        userName: raw.senderName,
-        fullName: raw.senderName,
+        userName: raw.senderName ?? raw.senderId,
+        fullName: raw.senderName ?? "",
         isBot: raw.senderType === "bot",
         isMe: raw.senderId === this.botUserId,
       },
       metadata: {
         dateSent: new Date(raw.createdAt),
-        edited: raw.isEdited,
+        edited: raw.isEdited ?? false,
       },
       attachments,
     });
@@ -243,10 +256,7 @@ export class ZenzapAdapter
   ): Promise<RawMessage<ZenzapMessage>> {
     const { topicId } = this.decodeThreadId(threadId);
 
-    const card = extractCard(message);
-    const text = card
-      ? this.converter.renderPostable(message)
-      : this.converter.renderPostable(message);
+    const text = this.converter.renderPostable(message);
 
     const response = await this.api.sendMessage({
       topicId,
@@ -265,7 +275,6 @@ export class ZenzapAdapter
     _messageId: string,
     _message: AdapterPostableMessage,
   ): Promise<RawMessage<ZenzapMessage>> {
-    // Zenzap API does not currently expose a message edit endpoint
     throw new ValidationError("zenzap", "Zenzap does not support editing messages");
   }
 
@@ -273,7 +282,6 @@ export class ZenzapAdapter
     _threadId: string,
     _messageId: string,
   ): Promise<void> {
-    // Zenzap API does not currently expose a message delete endpoint
     throw new ValidationError("zenzap", "Zenzap does not support deleting messages");
   }
 
@@ -292,11 +300,11 @@ export class ZenzapAdapter
 
   async removeReaction(
     _threadId: string,
-    _messageId: string,
-    _emoji: EmojiValue | string,
+    messageId: string,
+    emoji: EmojiValue | string,
   ): Promise<void> {
-    // Zenzap API does not currently expose a reaction removal endpoint
-    throw new ValidationError("zenzap", "Zenzap does not support removing reactions");
+    const emojiStr = typeof emoji === "string" ? emoji : emoji.name;
+    await this.api.removeReaction(messageId, emojiStr);
   }
 
   // ---------------------------------------------------------------------------

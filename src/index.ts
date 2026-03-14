@@ -9,8 +9,10 @@ export type {
   ZenzapTopic,
   ZenzapMessage,
   ZenzapMessageAttachment,
+  ZenzapAttachmentTranscription,
   ZenzapMessageMention,
   ZenzapMessageReaction,
+  ZenzapMessageLink,
   ZenzapPollingUpdate,
   ZenzapUpdatesResponse,
 } from "./types";

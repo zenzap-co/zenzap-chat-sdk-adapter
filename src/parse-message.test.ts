@@ -88,4 +88,32 @@ describe("parseMessage", () => {
     const message = adapter.parseMessage(raw);
     expect(message.metadata.dateSent).toEqual(new Date(timestamp));
   });
+
+  it("should handle missing optional fields gracefully", () => {
+    const raw: ZenzapMessage = {
+      id: "msg-minimal",
+      topicId: "topic-1",
+      senderId: "user-1",
+      senderType: "user",
+      createdAt: 1700000000000,
+      updatedAt: 1700000000000,
+    };
+    const message = adapter.parseMessage(raw);
+    expect(message.text).toBe("");
+    expect(message.author.userName).toBe("user-1");
+    expect(message.author.fullName).toBe("");
+    expect(message.attachments).toHaveLength(0);
+    expect(message.metadata.edited).toBe(false);
+  });
+
+  it("should handle attachments without all fields", () => {
+    const raw = makeRawMessage({
+      attachments: [
+        { type: "image" } as any,
+      ],
+    });
+    const message = adapter.parseMessage(raw);
+    expect(message.attachments).toHaveLength(1);
+    expect(message.attachments[0].type).toBe("image");
+  });
 });

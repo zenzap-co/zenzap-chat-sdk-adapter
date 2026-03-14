@@ -115,6 +115,23 @@ describe("handleWebhook", () => {
     );
   });
 
+  it("should process message nested in data.message (real API format)", async () => {
+    const rawMsg = makeRawMessage({ senderId: "user-99" });
+    const update = makeUpdate("message.created", {
+      message: rawMsg as unknown as Record<string, unknown>,
+    });
+
+    const request = new Request("http://localhost/webhook", {
+      method: "POST",
+      body: JSON.stringify(update),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    await adapter.handleWebhook(request);
+
+    expect(mockChat.processMessage).toHaveBeenCalledTimes(1);
+  });
+
   it("should skip messages from the bot itself", async () => {
     const rawMsg = makeRawMessage({ senderId: "bot-42" });
     const update = makeUpdate(

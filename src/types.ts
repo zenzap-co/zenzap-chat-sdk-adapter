@@ -53,16 +53,23 @@ export interface ZenzapTopic {
   externalId?: string;
 }
 
+export interface ZenzapAttachmentTranscription {
+  status?: string;
+  text?: string;
+}
+
 export interface ZenzapMessageAttachment {
-  id: string;
-  type: "image" | "file" | "video" | "audio";
-  name: string;
-  url: string;
+  id?: string;
+  type?: string;
+  name?: string;
+  url?: string;
+  transcription?: ZenzapAttachmentTranscription;
 }
 
 export interface ZenzapMessageMention {
   id: string;
-  name: string;
+  name?: string;
+  type?: string;
 }
 
 export interface ZenzapMessageReaction {
@@ -71,21 +78,31 @@ export interface ZenzapMessageReaction {
   userIds?: string[];
 }
 
+export interface ZenzapMessageLink {
+  url: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+}
+
 export interface ZenzapMessage {
   id: string;
   topicId: string;
   senderId: string;
-  senderName: string;
+  senderName?: string;
   senderType: "user" | "bot" | "system";
-  text: string;
+  text?: string;
   createdAt: number;
   updatedAt: number;
-  isEdited: boolean;
-  isSystem: boolean;
-  replyCount: number;
-  attachments: ZenzapMessageAttachment[];
-  mentions: ZenzapMessageMention[];
-  reactions: ZenzapMessageReaction[];
+  isEdited?: boolean;
+  isSystem?: boolean;
+  replyCount?: number;
+  replyToMessageId?: string;
+  attachments?: ZenzapMessageAttachment[];
+  mentions?: ZenzapMessageMention[];
+  mentionedProfiles?: string[];
+  reactions?: ZenzapMessageReaction[];
+  links?: ZenzapMessageLink[];
 }
 
 export interface ZenzapPollingUpdate {
