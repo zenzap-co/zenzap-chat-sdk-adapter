@@ -1,5 +1,8 @@
 # chat-adapter-zenzap
 
+[![npm version](https://img.shields.io/npm/v/chat-adapter-zenzap)](https://www.npmjs.com/package/chat-adapter-zenzap)
+[![npm downloads](https://img.shields.io/npm/dm/chat-adapter-zenzap)](https://www.npmjs.com/package/chat-adapter-zenzap)
+
 A [Chat SDK](https://chat-sdk.dev) adapter for [Zenzap](https://zenzap.co) — build platform-agnostic chatbots that work with Zenzap's messaging API.
 
 ## Installation
@@ -31,24 +34,47 @@ chat.onSubscribedMessage(async (thread, message) => {
 });
 ```
 
-## Configuration
-
-The adapter requires a Zenzap API key and secret. Pass them directly or set environment variables:
-
-| Env variable | Description |
-|---|---|
-| `ZENZAP_API_KEY` | Zenzap API key (used as Bearer token) |
-| `ZENZAP_API_SECRET` | Zenzap API secret (used for HMAC-SHA256 request signing) |
-| `ZENZAP_BASE_URL` | Optional. Defaults to `https://api.zenzap.co` |
+Or with explicit configuration:
 
 ```typescript
-createZenzapAdapter({
-  apiKey: "your-api-key",
-  apiSecret: "your-api-secret",
+const chat = new Chat({
+  userName: "my-bot",
+  adapters: {
+    zenzap: createZenzapAdapter({
+      apiKey: "your-api-key",
+      apiSecret: "your-api-secret",
+    }),
+  },
 });
 ```
 
-API keys are created in the Zenzap admin panel. Each key generates a bot user that sends messages on your behalf. See the [Zenzap API docs](https://docs.zenzap.co/api-reference/getting-started) for details.
+## Environment variables
+
+| Variable | Required | Description | Example |
+|---|---|---|---|
+| `ZENZAP_API_KEY` | Yes | API key (used as Bearer token) | `zk_live_abc123...` |
+| `ZENZAP_API_SECRET` | Yes | API secret (used for HMAC-SHA256 request signing) | `zs_live_def456...` |
+| `ZENZAP_BASE_URL` | No | API base URL | `https://api.zenzap.co` |
+
+## Configuration reference
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `apiKey` | `string` | `process.env.ZENZAP_API_KEY` | Zenzap API key |
+| `apiSecret` | `string` | `process.env.ZENZAP_API_SECRET` | Zenzap API secret for HMAC signing |
+| `baseUrl` | `string?` | `https://api.zenzap.co` | API base URL override |
+| `userName` | `string?` | `"zenzap-bot"` | Bot display name |
+| `logger` | `Logger?` | `ConsoleLogger` | Custom logger instance |
+
+## Platform setup
+
+1. Log in to the [Zenzap admin panel](https://app.zenzap.co).
+2. Navigate to **Settings > API Keys**.
+3. Click **Create API Key** — this generates a new bot user.
+4. Copy the **API Key** and **API Secret** from the creation dialog.
+5. Set the environment variables `ZENZAP_API_KEY` and `ZENZAP_API_SECRET`, or pass them to `createZenzapAdapter()`.
+
+See the [Zenzap API docs](https://docs.zenzap.co/api-reference/getting-started) for full details on authentication and request signing.
 
 ## Receiving messages
 
@@ -142,8 +168,15 @@ export async function GET(request: Request) {
 import {
   ZenzapAdapter,          // Adapter class
   ZenzapApiClient,        // Standalone API client
-  ZenzapFormatConverter,  // Markdown ↔ mdast converter
+  ZenzapFormatConverter,  // Markdown <-> mdast converter
   createZenzapAdapter,    // Factory function
+} from "chat-adapter-zenzap";
+
+// Types
+import type {
+  ZenzapAdapterConfig,
+  ZenzapThreadId,
+  ZenzapMessage,
 } from "chat-adapter-zenzap";
 ```
 
@@ -155,6 +188,7 @@ npm run build        # Build with tsup
 npm run typecheck    # Type check
 npm test             # Run tests
 npm run dev          # Watch mode
+npm run pack:check   # Verify package contents
 ```
 
 ## Publishing

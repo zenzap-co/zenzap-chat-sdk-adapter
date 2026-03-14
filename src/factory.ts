@@ -9,7 +9,26 @@ import type { ZenzapAdapterConfig } from "./types";
  * Credentials can be passed directly or read from environment variables:
  * - `ZENZAP_API_KEY`
  * - `ZENZAP_API_SECRET`
- * - `ZENZAP_BASE_URL` (optional, defaults to https://api.zenzap.co)
+ * - `ZENZAP_BASE_URL` (optional, defaults to `https://api.zenzap.co`)
+ *
+ * @param config - Partial adapter configuration. Missing fields fall back to
+ *   environment variables.
+ * @returns A ready-to-use {@link ZenzapAdapter} instance.
+ * @throws {ValidationError} If the API key or secret is not provided.
+ *
+ * @example
+ * ```typescript
+ * import { createZenzapAdapter } from "chat-adapter-zenzap";
+ *
+ * // Uses ZENZAP_API_KEY and ZENZAP_API_SECRET env vars
+ * const adapter = createZenzapAdapter();
+ *
+ * // Or pass credentials explicitly
+ * const adapter = createZenzapAdapter({
+ *   apiKey: "your-key",
+ *   apiSecret: "your-secret",
+ * });
+ * ```
  */
 export function createZenzapAdapter(
   config?: Partial<ZenzapAdapterConfig> & { logger?: Logger },
