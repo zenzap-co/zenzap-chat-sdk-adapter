@@ -176,7 +176,8 @@ export class ZenzapAdapter
     if (!this.chat) return;
 
     if (update.eventType === "message.created") {
-      const data = update.data as unknown as ZenzapMessage;
+      const raw = update.data as Record<string, unknown>;
+      const data = (raw.message ?? raw) as unknown as ZenzapMessage;
 
       // Skip messages from this bot
       if (data.senderId === this.botUserId) return;
