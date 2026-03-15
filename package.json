@@ -1,6 +1,6 @@
 {
   "name": "@zenzap-co/chat-adapter-zenzap",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Zenzap adapter for Chat SDK",
   "type": "module",
   "main": "./dist/index.js",
