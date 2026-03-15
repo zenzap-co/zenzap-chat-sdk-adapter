@@ -59,11 +59,15 @@ export class ZenzapApiClient {
   // Generic request helper
   // ---------------------------------------------------------------------------
 
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
+  private async request<T>({
+    method,
+    path,
+    body,
+  }: {
+    method: string;
+    path: string;
+    body?: unknown;
+  }): Promise<T> {
     const url = `${this.baseUrl}${path}`;
 
     // Compact JSON serialization (no spaces) as required by Zenzap
@@ -114,7 +118,14 @@ export class ZenzapApiClient {
     // Some endpoints return 204 / empty body
     const text = await response.text();
     if (!text) return undefined as T;
-    return JSON.parse(text) as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new NetworkError(
+        ADAPTER_NAME,
+        `Zenzap API returned invalid JSON for ${method} ${path}: ${text.substring(0, 200)}`,
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -122,7 +133,7 @@ export class ZenzapApiClient {
   // ---------------------------------------------------------------------------
 
   async getCurrentMember(): Promise<ZenzapMember> {
-    return this.request<ZenzapMember>("GET", "/v2/members/me");
+    return this.request<ZenzapMember>({ method: "GET", path: "/v2/members/me" });
   }
 
   async listMembers(
@@ -131,7 +142,7 @@ export class ZenzapApiClient {
   ): Promise<{ members: ZenzapMember[]; nextCursor?: string; hasMore: boolean }> {
     const params = new URLSearchParams({ limit: String(limit) });
     if (cursor) params.set("cursor", cursor);
-    return this.request("GET", `/v2/members?${params}`);
+    return this.request({ method: "GET", path: `/v2/members?${params}` });
   }
 
   // ---------------------------------------------------------------------------
@@ -144,11 +155,11 @@ export class ZenzapApiClient {
   ): Promise<{ topics: ZenzapTopic[]; nextCursor?: string; hasMore: boolean }> {
     const params = new URLSearchParams({ limit: String(limit) });
     if (cursor) params.set("cursor", cursor);
-    return this.request("GET", `/v2/topics?${params}`);
+    return this.request({ method: "GET", path: `/v2/topics?${params}` });
   }
 
   async getTopic(topicId: string): Promise<{ id: string; name: string; description: string; memberIds: string[] }> {
-    return this.request("GET", `/v2/topics/${topicId}`);
+    return this.request({ method: "GET", path: `/v2/topics/${topicId}` });
   }
 
   async createTopic(data: {
@@ -157,7 +168,7 @@ export class ZenzapApiClient {
     description?: string;
     externalId?: string;
   }): Promise<{ id: string; name: string; members: string[]; externalId?: string; createdAt: number }> {
-    return this.request("POST", "/v2/topics", data);
+    return this.request({ method: "POST", path: "/v2/topics", body: data });
   }
 
   async getTopicMessages(
@@ -179,10 +190,10 @@ export class ZenzapApiClient {
     if (options?.order) params.set("order", options.order);
     if (options?.threadId) params.set("threadId", options.threadId);
     const qs = params.toString();
-    return this.request(
-      "GET",
-      `/v2/topics/${topicId}/messages${qs ? `?${qs}` : ""}`,
-    );
+    return this.request({
+      method: "GET",
+      path: `/v2/topics/${topicId}/messages${qs ? `?${qs}` : ""}`,
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -194,15 +205,17 @@ export class ZenzapApiClient {
     text: string;
     externalId?: string;
   }): Promise<{ id: string; topicId: string; createdAt: number }> {
-    return this.request("POST", "/v2/messages", data);
+    return this.request({ method: "POST", path: "/v2/messages", body: data });
   }
 
   async addReaction(
     messageId: string,
     reaction: string,
   ): Promise<{ id: string; messageId: string; reaction: string; createdAt: number }> {
-    return this.request("POST", `/v2/messages/${messageId}/reactions`, {
-      reaction,
+    return this.request({
+      method: "POST",
+      path: `/v2/messages/${messageId}/reactions`,
+      body: { reaction },
     });
   }
 
@@ -210,17 +223,19 @@ export class ZenzapApiClient {
     messageId: string,
     reaction: string,
   ): Promise<void> {
-    return this.request("DELETE", `/v2/messages/${messageId}/reactions`, {
-      reaction,
+    return this.request({
+      method: "DELETE",
+      path: `/v2/messages/${messageId}/reactions`,
+      body: { reaction },
     });
   }
 
   async markDelivered(messageId: string): Promise<void> {
-    return this.request("POST", `/v2/messages/${messageId}/delivered`);
+    return this.request({ method: "POST", path: `/v2/messages/${messageId}/delivered` });
   }
 
   async markRead(messageId: string): Promise<void> {
-    return this.request("POST", `/v2/messages/${messageId}/read`);
+    return this.request({ method: "POST", path: `/v2/messages/${messageId}/read` });
   }
 
   // ---------------------------------------------------------------------------
@@ -231,8 +246,10 @@ export class ZenzapApiClient {
     topicId: string,
     memberIds: string[],
   ): Promise<{ id: string; memberIds: string[]; updatedAt: number }> {
-    return this.request("POST", `/v2/topics/${topicId}/members`, {
-      memberIds,
+    return this.request({
+      method: "POST",
+      path: `/v2/topics/${topicId}/members`,
+      body: { memberIds },
     });
   }
 
@@ -240,8 +257,10 @@ export class ZenzapApiClient {
     topicId: string,
     memberIds: string[],
   ): Promise<{ id: string; memberIds: string[]; updatedAt: number }> {
-    return this.request("DELETE", `/v2/topics/${topicId}/members`, {
-      memberIds,
+    return this.request({
+      method: "DELETE",
+      path: `/v2/topics/${topicId}/members`,
+      body: { memberIds },
     });
   }
 
@@ -249,7 +268,7 @@ export class ZenzapApiClient {
     topicId: string,
     data: { name?: string; description?: string },
   ): Promise<void> {
-    return this.request("PATCH", `/v2/topics/${topicId}`, data);
+    return this.request({ method: "PATCH", path: `/v2/topics/${topicId}`, body: data });
   }
 
   // ---------------------------------------------------------------------------
@@ -266,6 +285,6 @@ export class ZenzapApiClient {
       timeout: String(timeout),
     });
     if (offset) params.set("offset", offset);
-    return this.request("GET", `/v2/updates?${params}`);
+    return this.request({ method: "GET", path: `/v2/updates?${params}` });
   }
 }

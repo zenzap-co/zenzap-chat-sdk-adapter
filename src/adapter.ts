@@ -264,7 +264,16 @@ export class ZenzapAdapter
     });
 
     return {
-      raw: { id: response.id, topicId: response.topicId } as unknown as ZenzapMessage,
+      raw: {
+        id: response.id,
+        topicId: response.topicId,
+        text,
+        createdAt: response.createdAt,
+        updatedAt: response.createdAt,
+        senderId: this.botUserId ?? "",
+        senderName: this.userName,
+        senderType: "bot",
+      } satisfies ZenzapMessage,
       id: response.id,
       threadId,
     };
@@ -317,14 +326,17 @@ export class ZenzapAdapter
   ): Promise<FetchResult<ZenzapMessage>> {
     const { topicId, threadId: subThreadId } = this.decodeThreadId(threadId);
 
+    const isBackward = (options?.direction ?? "backward") === "backward";
     const response = await this.api.getTopicMessages(topicId, {
       limit: options?.limit ?? 50,
       cursor: options?.cursor as string | undefined,
-      order: "asc",
+      order: isBackward ? "desc" : "asc",
       threadId: subThreadId,
     });
 
-    const messages = response.messages.map((m) => this.parseMessage(m));
+    const parsed = response.messages.map((m) => this.parseMessage(m));
+    // SDK expects chronological order within each page
+    const messages = isBackward ? parsed.reverse() : parsed;
 
     return {
       messages,
@@ -349,6 +361,23 @@ export class ZenzapAdapter
         channelId: topicId,
         metadata: {},
       };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Channel info
+  // ---------------------------------------------------------------------------
+
+  async fetchChannelInfo(channelId: string): Promise<{ id: string; name?: string; metadata: Record<string, unknown> }> {
+    try {
+      const topic = await this.api.getTopic(channelId);
+      return {
+        id: channelId,
+        name: topic.name,
+        metadata: { description: topic.description },
+      };
+    } catch {
+      return { id: channelId, metadata: {} };
     }
   }
 
