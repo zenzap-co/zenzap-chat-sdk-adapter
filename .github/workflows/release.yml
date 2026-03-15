@@ -144,7 +144,9 @@ jobs:
         run: git push origin "v${{ steps.merged_release_version.outputs.version }}"
 
       - name: Publish stable package
-        run: pnpm publish --access public --no-git-checks --provenance
+        run: pnpm publish --access public --no-git-checks
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
 
   publish-dev:
     name: Publish dev snapshot
