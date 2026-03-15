@@ -144,9 +144,7 @@ jobs:
         run: git push origin "v${{ steps.merged_release_version.outputs.version }}"
 
       - name: Publish stable package
-        run: pnpm publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --access public --no-git-checks --provenance
 
   publish-dev:
     name: Publish dev snapshot
@@ -183,6 +181,4 @@ jobs:
           npm version "${BASE}-dev.${SHA}" --no-git-tag-version --ignore-scripts
 
       - name: Publish dev snapshot
-        run: pnpm publish --tag dev --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --tag dev --access public --no-git-checks --provenance
