@@ -1,5 +1,5 @@
 {
-  "name": "chat-adapter-zenzap",
+  "name": "@zenzap-co/chat-adapter-zenzap",
   "version": "0.1.0",
   "description": "Zenzap adapter for Chat SDK",
   "type": "module",
