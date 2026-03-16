@@ -132,11 +132,6 @@ jobs:
           VERSION=$(node -p 'require("./package.json").version')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Configure git identity
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: Create release tag
         run: git tag "v${{ steps.merged_release_version.outputs.version }}"
 
