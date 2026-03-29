@@ -154,11 +154,11 @@ export async function GET(request: Request) {
 | Send messages | Yes |
 | Receive messages | Yes (long polling or webhook) |
 | Fetch message history | Yes (cursor-based pagination) |
-| Reactions | Yes (add only — removal in progress) |
+| Reactions | Yes (add and remove) |
 | Attachments (receive) | Yes |
 | File uploads (send) | In progress |
-| Edit messages | In progress |
-| Delete messages | In progress |
+| Edit messages | Yes |
+| Delete messages | Yes |
 | Typing indicators | In progress |
 | Streaming | In progress |
 
