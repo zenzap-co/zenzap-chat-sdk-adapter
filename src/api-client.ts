@@ -208,6 +208,24 @@ export class ZenzapApiClient {
     return this.request({ method: "POST", path: "/v2/messages", body: data });
   }
 
+  async editMessage(
+    messageId: string,
+    data: { text: string },
+  ): Promise<{ id: string; updatedAt: number }> {
+    return this.request({
+      method: "PATCH",
+      path: `/v2/messages/${messageId}`,
+      body: data,
+    });
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    return this.request({
+      method: "DELETE",
+      path: `/v2/messages/${messageId}`,
+    });
+  }
+
   async addReaction(
     messageId: string,
     reaction: string,
@@ -221,12 +239,11 @@ export class ZenzapApiClient {
 
   async removeReaction(
     messageId: string,
-    reaction: string,
+    reactionId: string,
   ): Promise<void> {
     return this.request({
       method: "DELETE",
-      path: `/v2/messages/${messageId}/reactions`,
-      body: { reaction },
+      path: `/v2/messages/${messageId}/reactions/${reactionId}`,
     });
   }
 

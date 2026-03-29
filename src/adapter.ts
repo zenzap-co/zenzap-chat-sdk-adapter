@@ -39,6 +39,9 @@ export class ZenzapAdapter
   private converter = new ZenzapFormatConverter();
   readonly api: ZenzapApiClient;
 
+  // Maps "messageId:emoji" → reactionId so removeReaction can look it up
+  private reactionIds = new Map<string, string>();
+
   // Long-polling state
   private pollingOffset?: string;
   private pollingActive = false;
@@ -280,18 +283,35 @@ export class ZenzapAdapter
   }
 
   async editMessage(
-    _threadId: string,
-    _messageId: string,
-    _message: AdapterPostableMessage,
+    threadId: string,
+    messageId: string,
+    message: AdapterPostableMessage,
   ): Promise<RawMessage<ZenzapMessage>> {
-    throw new ValidationError("zenzap", "Zenzap does not support editing messages");
+    const text = this.converter.renderPostable(message);
+    const response = await this.api.editMessage(messageId, { text });
+
+    return {
+      raw: {
+        id: response.id,
+        topicId: this.decodeThreadId(threadId).topicId,
+        text,
+        createdAt: 0,
+        updatedAt: response.updatedAt,
+        senderId: this.botUserId ?? "",
+        senderName: this.userName,
+        senderType: "bot",
+        isEdited: true,
+      } satisfies ZenzapMessage,
+      id: response.id,
+      threadId,
+    };
   }
 
   async deleteMessage(
     _threadId: string,
-    _messageId: string,
+    messageId: string,
   ): Promise<void> {
-    throw new ValidationError("zenzap", "Zenzap does not support deleting messages");
+    await this.api.deleteMessage(messageId);
   }
 
   // ---------------------------------------------------------------------------
@@ -304,7 +324,8 @@ export class ZenzapAdapter
     emoji: EmojiValue | string,
   ): Promise<void> {
     const emojiStr = typeof emoji === "string" ? emoji : emoji.name;
-    await this.api.addReaction(messageId, emojiStr);
+    const response = await this.api.addReaction(messageId, emojiStr);
+    this.reactionIds.set(`${messageId}:${emojiStr}`, response.id);
   }
 
   async removeReaction(
@@ -313,7 +334,17 @@ export class ZenzapAdapter
     emoji: EmojiValue | string,
   ): Promise<void> {
     const emojiStr = typeof emoji === "string" ? emoji : emoji.name;
-    await this.api.removeReaction(messageId, emojiStr);
+    const key = `${messageId}:${emojiStr}`;
+    const reactionId = this.reactionIds.get(key);
+    if (!reactionId) {
+      throw new ValidationError(
+        "zenzap",
+        `No known reactionId for emoji "${emojiStr}" on message "${messageId}". ` +
+          "Only reactions added by this adapter instance can be removed.",
+      );
+    }
+    await this.api.removeReaction(messageId, reactionId);
+    this.reactionIds.delete(key);
   }
 
   // ---------------------------------------------------------------------------
