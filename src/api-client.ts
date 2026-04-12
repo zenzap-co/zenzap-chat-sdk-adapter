@@ -158,7 +158,7 @@ export class ZenzapApiClient {
     return this.request({ method: "GET", path: `/v2/topics?${params}` });
   }
 
-  async getTopic(topicId: string): Promise<{ id: string; name: string; description: string; memberIds: string[] }> {
+  async getTopic(topicId: string): Promise<{ id: string; name: string; description: string; memberIds: string[]; type: "topic" | "dm" }> {
     return this.request({ method: "GET", path: `/v2/topics/${topicId}` });
   }
 
@@ -199,6 +199,21 @@ export class ZenzapApiClient {
   // ---------------------------------------------------------------------------
   // Messages
   // ---------------------------------------------------------------------------
+
+  async getMessage(
+    messageId: string,
+  ): Promise<{
+    messageId: string;
+    channelId: string;
+    senderId: string;
+    text: string;
+    type: string;
+    externalId?: string;
+    createdAt: number;
+    updatedAt: number;
+  }> {
+    return this.request({ method: "GET", path: `/v2/messages/${messageId}` });
+  }
 
   async sendMessage(data: {
     topicId: string;

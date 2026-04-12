@@ -41,6 +41,8 @@ export class ZenzapAdapter
 
   // Maps "messageId:emoji" → reactionId so removeReaction can look it up
   private reactionIds = new Map<string, string>();
+  // Maps topicId → topic type, populated when topic info is fetched
+  private topicTypes = new Map<string, "topic" | "dm">();
 
   // Long-polling state
   private pollingOffset?: string;
@@ -287,6 +289,7 @@ export class ZenzapAdapter
     messageId: string,
     message: AdapterPostableMessage,
   ): Promise<RawMessage<ZenzapMessage>> {
+    const original = await this.api.getMessage(messageId);
     const text = this.converter.renderPostable(message);
     const response = await this.api.editMessage(messageId, { text });
 
@@ -295,7 +298,7 @@ export class ZenzapAdapter
         id: response.id,
         topicId: this.decodeThreadId(threadId).topicId,
         text,
-        createdAt: 0,
+        createdAt: original.createdAt,
         updatedAt: response.updatedAt,
         senderId: this.botUserId ?? "",
         senderName: this.userName,
@@ -380,6 +383,7 @@ export class ZenzapAdapter
 
     try {
       const topic = await this.api.getTopic(topicId);
+      this.topicTypes.set(topicId, topic.type);
       return {
         id: threadId,
         channelId: topicId,
@@ -402,6 +406,7 @@ export class ZenzapAdapter
   async fetchChannelInfo(channelId: string): Promise<{ id: string; name?: string; metadata: Record<string, unknown> }> {
     try {
       const topic = await this.api.getTopic(channelId);
+      this.topicTypes.set(channelId, topic.type);
       return {
         id: channelId,
         name: topic.name,
@@ -432,7 +437,8 @@ export class ZenzapAdapter
   // Optional: DM support
   // ---------------------------------------------------------------------------
 
-  isDM(_threadId: string): boolean {
-    return false;
+  isDM(threadId: string): boolean {
+    const { topicId } = this.decodeThreadId(threadId);
+    return this.topicTypes.get(topicId) === "dm";
   }
 }
