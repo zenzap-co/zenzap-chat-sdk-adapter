@@ -158,7 +158,7 @@ export class ZenzapApiClient {
     return this.request({ method: "GET", path: `/v2/topics?${params}` });
   }
 
-  async getTopic(topicId: string): Promise<{ id: string; name: string; description: string; memberIds: string[] }> {
+  async getTopic(topicId: string): Promise<{ id: string; name: string; description: string; memberIds: string[]; type: "topic" | "dm" }> {
     return this.request({ method: "GET", path: `/v2/topics/${topicId}` });
   }
 
@@ -200,12 +200,45 @@ export class ZenzapApiClient {
   // Messages
   // ---------------------------------------------------------------------------
 
+  async getMessage(
+    messageId: string,
+  ): Promise<{
+    messageId: string;
+    channelId: string;
+    senderId: string;
+    text: string;
+    type: string;
+    externalId?: string;
+    createdAt: number;
+    updatedAt: number;
+  }> {
+    return this.request({ method: "GET", path: `/v2/messages/${messageId}` });
+  }
+
   async sendMessage(data: {
     topicId: string;
     text: string;
     externalId?: string;
   }): Promise<{ id: string; topicId: string; createdAt: number }> {
     return this.request({ method: "POST", path: "/v2/messages", body: data });
+  }
+
+  async editMessage(
+    messageId: string,
+    data: { text: string },
+  ): Promise<{ id: string; updatedAt: number }> {
+    return this.request({
+      method: "PATCH",
+      path: `/v2/messages/${messageId}`,
+      body: data,
+    });
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    return this.request({
+      method: "DELETE",
+      path: `/v2/messages/${messageId}`,
+    });
   }
 
   async addReaction(
@@ -221,12 +254,11 @@ export class ZenzapApiClient {
 
   async removeReaction(
     messageId: string,
-    reaction: string,
+    reactionId: string,
   ): Promise<void> {
     return this.request({
       method: "DELETE",
-      path: `/v2/messages/${messageId}/reactions`,
-      body: { reaction },
+      path: `/v2/messages/${messageId}/reactions/${reactionId}`,
     });
   }
 

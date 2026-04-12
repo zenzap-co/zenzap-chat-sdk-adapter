@@ -39,6 +39,11 @@ export class ZenzapAdapter
   private converter = new ZenzapFormatConverter();
   readonly api: ZenzapApiClient;
 
+  // Maps "messageId:emoji" → reactionId so removeReaction can look it up
+  private reactionIds = new Map<string, string>();
+  // Maps topicId → topic type, populated when topic info is fetched
+  private topicTypes = new Map<string, "topic" | "dm">();
+
   // Long-polling state
   private pollingOffset?: string;
   private pollingActive = false;
@@ -280,18 +285,36 @@ export class ZenzapAdapter
   }
 
   async editMessage(
-    _threadId: string,
-    _messageId: string,
-    _message: AdapterPostableMessage,
+    threadId: string,
+    messageId: string,
+    message: AdapterPostableMessage,
   ): Promise<RawMessage<ZenzapMessage>> {
-    throw new ValidationError("zenzap", "Zenzap does not support editing messages");
+    const original = await this.api.getMessage(messageId);
+    const text = this.converter.renderPostable(message);
+    const response = await this.api.editMessage(messageId, { text });
+
+    return {
+      raw: {
+        id: response.id,
+        topicId: this.decodeThreadId(threadId).topicId,
+        text,
+        createdAt: original.createdAt,
+        updatedAt: response.updatedAt,
+        senderId: this.botUserId ?? "",
+        senderName: this.userName,
+        senderType: "bot",
+        isEdited: true,
+      } satisfies ZenzapMessage,
+      id: response.id,
+      threadId,
+    };
   }
 
   async deleteMessage(
     _threadId: string,
-    _messageId: string,
+    messageId: string,
   ): Promise<void> {
-    throw new ValidationError("zenzap", "Zenzap does not support deleting messages");
+    await this.api.deleteMessage(messageId);
   }
 
   // ---------------------------------------------------------------------------
@@ -304,7 +327,8 @@ export class ZenzapAdapter
     emoji: EmojiValue | string,
   ): Promise<void> {
     const emojiStr = typeof emoji === "string" ? emoji : emoji.name;
-    await this.api.addReaction(messageId, emojiStr);
+    const response = await this.api.addReaction(messageId, emojiStr);
+    this.reactionIds.set(`${messageId}:${emojiStr}`, response.id);
   }
 
   async removeReaction(
@@ -313,7 +337,17 @@ export class ZenzapAdapter
     emoji: EmojiValue | string,
   ): Promise<void> {
     const emojiStr = typeof emoji === "string" ? emoji : emoji.name;
-    await this.api.removeReaction(messageId, emojiStr);
+    const key = `${messageId}:${emojiStr}`;
+    const reactionId = this.reactionIds.get(key);
+    if (!reactionId) {
+      throw new ValidationError(
+        "zenzap",
+        `No known reactionId for emoji "${emojiStr}" on message "${messageId}". ` +
+          "Only reactions added by this adapter instance can be removed.",
+      );
+    }
+    await this.api.removeReaction(messageId, reactionId);
+    this.reactionIds.delete(key);
   }
 
   // ---------------------------------------------------------------------------
@@ -349,6 +383,7 @@ export class ZenzapAdapter
 
     try {
       const topic = await this.api.getTopic(topicId);
+      this.topicTypes.set(topicId, topic.type);
       return {
         id: threadId,
         channelId: topicId,
@@ -371,6 +406,7 @@ export class ZenzapAdapter
   async fetchChannelInfo(channelId: string): Promise<{ id: string; name?: string; metadata: Record<string, unknown> }> {
     try {
       const topic = await this.api.getTopic(channelId);
+      this.topicTypes.set(channelId, topic.type);
       return {
         id: channelId,
         name: topic.name,
@@ -401,7 +437,8 @@ export class ZenzapAdapter
   // Optional: DM support
   // ---------------------------------------------------------------------------
 
-  isDM(_threadId: string): boolean {
-    return false;
+  isDM(threadId: string): boolean {
+    const { topicId } = this.decodeThreadId(threadId);
+    return this.topicTypes.get(topicId) === "dm";
   }
 }
